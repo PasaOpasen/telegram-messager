@@ -16,14 +16,22 @@ def read_text(result_path: PathLike, encoding: str = 'utf-8') -> str:
     return Path(result_path).read_text(encoding=encoding, errors='ignore')
 
 
+def _preprocess_text(text: str) -> str:
+    return text.replace('<', '').replace('>', '')[:1024]
+
+
 class TelegramMessager:
     def __init__(self, token: str, chatid: str):
         self.bot_token = token
         self.bot_chatId = chatid
 
+    @property
+    def _prefix(self):
+        return f'https://api.telegram.org/bot{self.bot_token}/'
+
     @staticmethod
     def from_token_chatid_pair_string(s: str):
-        return TelegramMessager(*s.strip().splitlines())
+        return TelegramMessager(*s.strip().split())
 
     @staticmethod
     def from_file(credentials_file: PathLike):
@@ -35,11 +43,11 @@ class TelegramMessager:
 
     def send_document(self, path: PathLike, caption: str = ''):
 
-        send_document = 'https://api.telegram.org/bot' + self.bot_token + '/sendDocument?'
+        send_document = self._prefix + 'sendDocument?'
         data = {
           'chat_id': self.bot_chatId,
           'parse_mode': 'HTML',
-          'caption': caption.replace('<', '').replace('>', '')[:1024]
+          'caption': _preprocess_text(caption)
         }
         # Need to pass the document field in the files dict
         files = {
@@ -52,8 +60,8 @@ class TelegramMessager:
         return r.json()
 
     def send_msg(self, text: str):
-        url_req = (f"https://api.telegram.org/bot{self.bot_token}"
-                   f"/sendMessage?chat_id={self.bot_chatId}&text={text[:1024]}")
+        url_req = (self._prefix +
+                   f"sendMessage?chat_id={self.bot_chatId}&text={_preprocess_text(text)}")
         results = requests.get(url_req)
         return results.json()
 
