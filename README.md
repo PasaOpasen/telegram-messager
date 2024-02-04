@@ -16,6 +16,11 @@ TM.send_msg('message')
 
 1. Create a bot by BotFather, get its `TOKEN`
 2. Make public channel with `@SomeChannelName`, add this bot as admin
-3. Get this `ChatId` by visiting https://api.telegram.org/botTOKEN/sendMessage?chat_id=@SomeChannelName&text=123 (with replaces)
+3. Get this `ChatId` by visiting https://api.telegram.org/botTOKEN/sendMessage?chat_id=@SomeChannelName&text=123 (with replaces):
+```sh
+TOKEN=t
+CHANNEL=c
+curl "https://api.telegram.org/bot${TOKEN}/sendMessage?chat_id=${CHANNEL}&text=123" | jq '.result.chat.id'
+```
 4. Make channel private (if necessary)
 5. Now u can send messages to this channel by command `curl -s -X POST https://api.telegram.org/botTOKEN/sendMessage -d chat_id=ChatId -d text="your message"`
