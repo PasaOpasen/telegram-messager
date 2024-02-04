@@ -22,12 +22,16 @@ class TelegramMessager:
         self.bot_chatId = chatid
 
     @staticmethod
+    def from_token_chatid_pair_string(s: str):
+        return TelegramMessager(*s.strip().splitlines())
+
+    @staticmethod
     def from_file(credentials_file: PathLike):
         """
         loads credentials from file with string like
             token chat_id
         """
-        return TelegramMessager(*read_text(credentials_file).strip().splitlines())
+        return TelegramMessager.from_token_chatid_pair_string(read_text(credentials_file))
 
     def send_document(self, path: PathLike, caption: str = ''):
 
