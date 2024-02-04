@@ -6,6 +6,7 @@ from typing_extensions import TypeAlias
 import os
 from pathlib import Path
 
+import json
 import requests
 
 
@@ -41,6 +42,12 @@ class TelegramMessager:
         """
         return TelegramMessager.from_token_chatid_pair_string(read_text(credentials_file))
 
+    def send_msg(self, text: str):
+        url_req = (self._prefix +
+                   f"sendMessage?chat_id={self.bot_chatId}&text={_preprocess_text(text)}")
+        results = requests.get(url_req)
+        return results.json()
+
     def send_document(self, path: PathLike, caption: str = ''):
 
         send_document = self._prefix + 'sendDocument?'
@@ -59,11 +66,33 @@ class TelegramMessager:
 
         return r.json()
 
-    def send_msg(self, text: str):
-        url_req = (self._prefix +
-                   f"sendMessage?chat_id={self.bot_chatId}&text={_preprocess_text(text)}")
-        results = requests.get(url_req)
-        return results.json()
+    def send_documents(self, *paths: PathLike, caption: str = ''):
+        assert paths
+
+        media = [
+            {"type": "document", "media": f"attach://{i}"}
+            for i in range(len(paths))
+        ]
+        if caption:
+            media[-1]['caption'] = _preprocess_text(caption)
+
+        files = {
+            str(i): open(p, 'rb')
+            for i, p in enumerate(paths)
+        }
+
+        r = requests.post(
+            self._prefix + "sendMediaGroup",
+            data={
+                "chat_id": self.bot_chatId,
+                "media": json.dumps(media)
+            },
+            files=files
+        )
+
+        return r.json()
+
+
 
 
 
