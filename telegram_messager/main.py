@@ -75,7 +75,7 @@ class TelegramMessager:
     #endregion
 
     #region SEND METHODS
-    def send_msg(self, text: str):
+    def send_text(self, text: str):
         url_req = self._prefix + f"sendMessage?chat_id={self.bot_chatId}&text={_preprocess_text(text)}"
         results = requests.get(url_req)
         return results.json()
@@ -123,6 +123,18 @@ class TelegramMessager:
         )
 
         return r.json()
+
+    def send(self, text: str = '', *files: PathLike):
+        """universal function which sends text or files or both depends on existence"""
+        assert text or files, 'nothing to send'
+
+        if not files:
+            return self.send_text(text)
+
+        if len(files) == 1:
+            return self.send_document(files[0], text)
+
+        return self.send_documents(*files, caption=text)
 
     #endregion
 
