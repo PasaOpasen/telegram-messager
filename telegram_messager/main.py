@@ -1,6 +1,6 @@
 
 
-from typing import Union
+from typing import Union, Optional
 from typing_extensions import TypeAlias
 
 import os
@@ -12,10 +12,22 @@ import requests
 
 PathLike: TypeAlias = Union[str, os.PathLike]
 
+TOKEN_NAME_DEFAULT = 'TELEGRAM_MESSAGER_BOT_TOKEN'
+CHAT_ID_NAME_DEFAULT = 'TELEGRAM_MESSAGER_CHAR_ID'
+
 
 def read_text(result_path: PathLike, encoding: str = 'utf-8') -> str:
     """reads file text"""
     return Path(result_path).read_text(encoding=encoding, errors='ignore')
+
+
+def read_env_var(name: str, non_empty: bool = False) -> str:
+    assert name
+    v = os.getenv(name, None)
+    assert v is not None, f"not found variable in env: {name}"
+    if non_empty and not v:
+        raise ValueError(f"empty value for env variable {name}")
+    return v
 
 
 def _preprocess_text(text: str) -> str:
@@ -27,12 +39,26 @@ def _preprocess_text(text: str) -> str:
 
 class TelegramMessager:
     def __init__(self, token: str, chatid: str):
-        self.bot_token = token
-        self.bot_chatId = chatid
+        assert token and chatid, (token, chatid)
+        self.bot_token = token.strip()
+        self.bot_chatId = chatid.strip()
 
     @property
     def _prefix(self):
         return f'https://api.telegram.org/bot{self.bot_token}/'
+
+    #region CONSTRUCTORS
+    @staticmethod
+    def from_env(bot_token_name: str = '', chat_id_name: str = ''):
+        """
+        creates the object reading credentials from environment using input names
+
+        if names are empty, uses default names
+        """
+        return TelegramMessager(
+            read_env_var(bot_token_name or TOKEN_NAME_DEFAULT, non_empty=True),
+            read_env_var(chat_id_name or CHAT_ID_NAME_DEFAULT, non_empty=True)
+        )
 
     @staticmethod
     def from_token_chatid_pair_string(s: str):
@@ -46,9 +72,11 @@ class TelegramMessager:
         """
         return TelegramMessager.from_token_chatid_pair_string(read_text(credentials_file))
 
+    #endregion
+
+    #region SEND METHODS
     def send_msg(self, text: str):
-        url_req = (self._prefix +
-                   f"sendMessage?chat_id={self.bot_chatId}&text={_preprocess_text(text)}")
+        url_req = self._prefix + f"sendMessage?chat_id={self.bot_chatId}&text={_preprocess_text(text)}"
         results = requests.get(url_req)
         return results.json()
 
@@ -96,7 +124,7 @@ class TelegramMessager:
 
         return r.json()
 
-
+    #endregion
 
 
 
