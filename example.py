@@ -10,4 +10,4 @@ TM.send_document('version.txt', caption='caption')
 
 TM.send_documents('version.txt', 'setup.py', 'Makefile', caption='text')
 
-TM.send('text', 'setup.py', 'Makefile')
+TM.send('setup.py', 'Makefile', text='text')
