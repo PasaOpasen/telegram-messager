@@ -145,7 +145,7 @@ class TelegramMessager:
 
 
 parser = argparse.ArgumentParser(
-    prog=f"{os.path.basename(__file__)}",
+    prog=f"tgmg",
     description='Simplest tool to send messages using Telegram HTTP API',
     formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )

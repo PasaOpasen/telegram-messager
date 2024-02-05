@@ -34,8 +34,8 @@ setuptools.setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     install_requires=parse_requirements('./requirements.txt'),
-    # entry_points = {
-    #     'console_scripts': ['toml-union=toml_union.toml_union:main'],
-    # },
+    entry_points = {
+        'console_scripts': ['tgmg=telegram_messager.main:cli'],
+    },
 )
 
