@@ -14,11 +14,15 @@ PathLike: TypeAlias = Union[str, os.PathLike]
 
 
 def read_text(result_path: PathLike, encoding: str = 'utf-8') -> str:
+    """reads file text"""
     return Path(result_path).read_text(encoding=encoding, errors='ignore')
 
 
 def _preprocess_text(text: str) -> str:
-    return text.replace('<', '').replace('>', '')[:1024]
+    t = text.replace('<', '').replace('>', '')
+    if len(t) >= 1024:
+        return t[:1021] + '...'
+    return t
 
 
 class TelegramMessager:
