@@ -54,6 +54,13 @@ class TelegramMessager:
     @property
     def _prefix(self):
         return f'https://api.telegram.org/bot{self.bot_token}/'
+    
+    @property
+    def _kwargs(self):
+        return dict(
+            timeout=self.timeout,
+            headers=self.headers,
+        )
 
     #region CONSTRUCTORS
     @staticmethod
@@ -87,8 +94,7 @@ class TelegramMessager:
     def send_text(self, text: str):
         url_req = self._prefix + f"sendMessage?chat_id={self.bot_chatId}&text={_preprocess_text(text)}"
         results = requests.get(
-            url_req, 
-            timeout=self.timeout, headers=self.headers,
+            url_req, **self._kwargs
         )
         return results.json()
 
@@ -108,7 +114,7 @@ class TelegramMessager:
         r = requests.post(
             send_document, 
             data=data, files=files, stream=True, 
-            timeout=self.timeout, headers=self.headers,
+            **self._kwargs
         )
         # print(r.url)
 
@@ -136,7 +142,7 @@ class TelegramMessager:
                 "media": json.dumps(media)
             },
             files=files,
-            timeout=self.timeout, headers=self.headers,
+            **self._kwargs
         )
 
         return r.json()
