@@ -1,7 +1,7 @@
 
 
 from typing import Union
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, Optional
 
 import os
 import sys
@@ -16,6 +16,7 @@ PathLike: TypeAlias = Union[str, os.PathLike]
 
 TOKEN_NAME_DEFAULT = 'TELEGRAM_MESSAGER_BOT_TOKEN'
 CHAT_ID_NAME_DEFAULT = 'TELEGRAM_MESSAGER_CHAR_ID'
+TIMEOUT_DEFAULT = 'TELEGRAM_MESSAGER_TIMEOUT'
 
 
 def read_text(result_path: PathLike, encoding: str = 'utf-8') -> str:
@@ -40,10 +41,12 @@ def _preprocess_text(text: str) -> str:
 
 
 class TelegramMessager:
-    def __init__(self, token: str, chatid: str):
+    def __init__(self, token: str, chatid: str, timeout: Optional[float] = None):
         assert token and chatid, (token, chatid)
         self.bot_token = token.strip()
         self.bot_chatId = chatid.strip()
+        self.timeout = float(timeout) if timeout else None
+        assert self.timeout is None or self.timeout >= 0, self.timeout
 
     @property
     def _prefix(self):
@@ -51,15 +54,16 @@ class TelegramMessager:
 
     #region CONSTRUCTORS
     @staticmethod
-    def from_env(bot_token_name: str = '', chat_id_name: str = ''):
+    def from_env(bot_token_name: str = '', chat_id_name: str = '', timeout_name: str = ''):
         """
         creates the object reading credentials from environment using input names
 
         if names are empty, uses default names
         """
         return TelegramMessager(
-            read_env_var(bot_token_name or TOKEN_NAME_DEFAULT, non_empty=True),
-            read_env_var(chat_id_name or CHAT_ID_NAME_DEFAULT, non_empty=True)
+            token=read_env_var(bot_token_name or TOKEN_NAME_DEFAULT, non_empty=True),
+            chatid=read_env_var(chat_id_name or CHAT_ID_NAME_DEFAULT, non_empty=True),
+            timeout=read_env_var(timeout_name or TIMEOUT_DEFAULT, non_empty=False),
         )
 
     @staticmethod
@@ -79,7 +83,7 @@ class TelegramMessager:
     #region SEND METHODS
     def send_text(self, text: str):
         url_req = self._prefix + f"sendMessage?chat_id={self.bot_chatId}&text={_preprocess_text(text)}"
-        results = requests.get(url_req)
+        results = requests.get(url_req, timeout=self.timeout)
         return results.json()
 
     def send_document(self, path: PathLike, caption: str = ''):
@@ -95,7 +99,11 @@ class TelegramMessager:
             'document': open(path, 'rb')
         }
 
-        r = requests.post(send_document, data=data, files=files, stream=True)
+        r = requests.post(
+            send_document, 
+            data=data, files=files, stream=True, 
+            timeout=self.timeout,
+        )
         # print(r.url)
 
         return r.json()
@@ -121,7 +129,8 @@ class TelegramMessager:
                 "chat_id": self.bot_chatId,
                 "media": json.dumps(media)
             },
-            files=files
+            files=files,
+            timeout=self.timeout,
         )
 
         return r.json()
@@ -192,6 +201,12 @@ parser.add_argument(
     help='chat id environment variable name to read from', default=CHAT_ID_NAME_DEFAULT
 )
 
+parser.add_argument(
+    '--timeout', '-z', action='store', type=float,
+    help='requests timeout', 
+    default=None
+)
+
 
 
 def cli():
@@ -220,7 +235,7 @@ def cli():
     else:
         chat = read_env_var(parsed.chat_env_var, non_empty=True)
 
-    res = TelegramMessager(token, chat).send(
+    res = TelegramMessager(token, chat, timeout=parsed.timeout).send(
         *(parsed.files or []), text=parsed.text
     )
     print(json.dumps(res))
