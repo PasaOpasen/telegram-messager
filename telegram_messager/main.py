@@ -1,7 +1,7 @@
 
 
 from typing import Union
-from typing_extensions import TypeAlias, Optional
+from typing_extensions import TypeAlias, Optional, Dict
 
 import os
 import sys
@@ -41,12 +41,15 @@ def _preprocess_text(text: str) -> str:
 
 
 class TelegramMessager:
-    def __init__(self, token: str, chatid: str, timeout: Optional[float] = None):
+    def __init__(self, token: str, chatid: str, timeout: Optional[float] = None, headers: Optional[Dict[str, str]] = None):
         assert token and chatid, (token, chatid)
         self.bot_token = token.strip()
         self.bot_chatId = chatid.strip()
+
         self.timeout = float(timeout) if timeout else None
         assert self.timeout is None or self.timeout >= 0, self.timeout
+        
+        self.headers = headers or {}
 
     @property
     def _prefix(self):
@@ -83,7 +86,10 @@ class TelegramMessager:
     #region SEND METHODS
     def send_text(self, text: str):
         url_req = self._prefix + f"sendMessage?chat_id={self.bot_chatId}&text={_preprocess_text(text)}"
-        results = requests.get(url_req, timeout=self.timeout)
+        results = requests.get(
+            url_req, 
+            timeout=self.timeout, headers=self.headers,
+        )
         return results.json()
 
     def send_document(self, path: PathLike, caption: str = ''):
@@ -102,7 +108,7 @@ class TelegramMessager:
         r = requests.post(
             send_document, 
             data=data, files=files, stream=True, 
-            timeout=self.timeout,
+            timeout=self.timeout, headers=self.headers,
         )
         # print(r.url)
 
@@ -130,7 +136,7 @@ class TelegramMessager:
                 "media": json.dumps(media)
             },
             files=files,
-            timeout=self.timeout,
+            timeout=self.timeout, headers=self.headers,
         )
 
         return r.json()
@@ -151,6 +157,24 @@ class TelegramMessager:
 
 
 #region CLI
+
+
+class kvdictAppendAction(argparse.Action):
+    """
+    argparse action to split an argument into KEY=VALUE form
+    on the first = and append to a dictionary.
+    """
+    def __call__(self, parser, args, values, option_string=None):
+        assert len(values) == 1
+        try:
+            (k, v) = values[0].split("=", 2)
+        except ValueError as ex:
+            raise argparse.ArgumentError(
+                self, f"could not parse argument \"{values[0]}\" as k=v format"
+            )
+        d = getattr(args, self.dest) or {}
+        d[k] = v
+        setattr(args, self.dest, d)
 
 
 parser = argparse.ArgumentParser(
@@ -207,6 +231,15 @@ parser.add_argument(
     default=None
 )
 
+parser.add_argument(
+    "--headers", "-d",
+    nargs=1,
+    action=kvdictAppendAction,
+    metavar="KEY=VALUE",
+    default={},
+    type=str,
+    help="Extra headers",
+)
 
 
 def cli():
@@ -235,7 +268,12 @@ def cli():
     else:
         chat = read_env_var(parsed.chat_env_var, non_empty=True)
 
-    res = TelegramMessager(token, chat, timeout=parsed.timeout).send(
+    res = TelegramMessager(
+        token, chat,
+
+        timeout=parsed.timeout,
+        headers=parsed.headers,
+    ).send(
         *(parsed.files or []), text=parsed.text
     )
     print(json.dumps(res))
