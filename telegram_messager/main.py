@@ -18,6 +18,8 @@ TOKEN_NAME_DEFAULT = 'TELEGRAM_MESSAGER_BOT_TOKEN'
 CHAT_ID_NAME_DEFAULT = 'TELEGRAM_MESSAGER_CHAR_ID'
 TIMEOUT_DEFAULT = 'TELEGRAM_MESSAGER_TIMEOUT'
 
+DEFAULT_API = 'https://api.telegram.org'
+
 
 def read_text(result_path: PathLike, encoding: str = 'utf-8') -> str:
     """reads file text"""
@@ -41,7 +43,14 @@ def _preprocess_text(text: str) -> str:
 
 
 class TelegramMessager:
-    def __init__(self, token: str, chatid: str, timeout: Optional[float] = None, headers: Optional[Dict[str, str]] = None):
+    def __init__(
+        self, 
+        token: str, 
+        chatid: str, 
+        timeout: Optional[float] = None, 
+        headers: Optional[Dict[str, str]] = None,
+        api_path: str = DEFAULT_API,
+    ):
         assert token and chatid, (token, chatid)
         self.bot_token = token.strip()
         self.bot_chatId = chatid.strip()
@@ -50,10 +59,13 @@ class TelegramMessager:
         assert self.timeout is None or self.timeout >= 0, self.timeout
         
         self.headers = headers or {}
+        
+        self.api = api_path.rstrip('/')
+        assert self.api, f'bad api: {api_path}'
 
     @property
     def _prefix(self):
-        return f'https://api.telegram.org/bot{self.bot_token}/'
+        return f'{self.api}/bot{self.bot_token}/'
     
     @property
     def _kwargs(self):
@@ -238,6 +250,12 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    '--api-path', '-a', action='store', type=str,
+    help='telegram API path (or proxy)', 
+    default=DEFAULT_API
+)
+
+parser.add_argument(
     "--headers", "-d",
     nargs=1,
     action=kvdictAppendAction,
@@ -277,6 +295,7 @@ def cli():
     res = TelegramMessager(
         token, chat,
 
+        api_path=parsed.api_path,
         timeout=parsed.timeout,
         headers=parsed.headers,
     ).send(
