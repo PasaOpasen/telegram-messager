@@ -50,6 +50,7 @@ class TelegramMessager:
         timeout: Optional[float] = None, 
         headers: Optional[Dict[str, str]] = None,
         api_path: str = DEFAULT_API,
+        verify: bool = True,
     ):
         assert token and chatid, (token, chatid)
         self.bot_token = token.strip()
@@ -62,6 +63,8 @@ class TelegramMessager:
         
         self.api = api_path.rstrip('/')
         assert self.api, f'bad api: {api_path}'
+        
+        self.verify = verify
 
     @property
     def _prefix(self):
@@ -72,6 +75,7 @@ class TelegramMessager:
         return dict(
             timeout=self.timeout,
             headers=self.headers,
+            verify=self.verify,
         )
 
     #region CONSTRUCTORS
@@ -250,6 +254,11 @@ parser.add_argument(
 )
 
 parser.add_argument(
+    '--ssl-no-verify', '-f', action='store_true',
+    help='whether to verify API certificate', 
+)
+
+parser.add_argument(
     '--api-path', '-a', action='store', type=str,
     help='telegram API path (or proxy)', 
     default=DEFAULT_API
@@ -298,6 +307,7 @@ def cli():
         api_path=parsed.api_path,
         timeout=parsed.timeout,
         headers=parsed.headers,
+        verify=not parsed.ssl_no_verify,
     ).send(
         *(parsed.files or []), text=parsed.text
     )
