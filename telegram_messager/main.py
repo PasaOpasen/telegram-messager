@@ -254,7 +254,7 @@ parser.add_argument(
 )
 
 parser.add_argument(
-    '--ssl-no-verify', '-f', action='store_true',
+    '--ssl-no-verify', '-k', action='store_true',
     help='whether to verify API certificate', 
 )
 
